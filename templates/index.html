@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор стоимости мягких окон</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Калькулятор стоимости мягких окон</h1>
+        <div class="instructions mb-4">
+            <p>1. Для расчета введите высоту готового окна в метрах (высота балки сверху + высота проема + высота перил по низу окна)</p>
+            <p>2. Введите ширину готового окна (проем + ширина столбов по бокам)</p>
+        </div>
+
+        <div id="windowsContainer">
+            <div class="card window-card mb-4">
+                <div class="card-body">
+                    <form class="calculator-form">
+                        <div class="mb-3">
+                            <label class="form-label">Наименование изделия:</label>
+                            <input type="text" class="form-control window-name" value="Наименование изделия" required>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col">
+                                <label class="form-label">Высота (м):</label>
+                                <input type="number" class="form-control height" required min="0.1" step="0.01">
+                            </div>
+                            <div class="col">
+                                <label class="form-label">Ширина (м):</label>
+                                <input type="number" class="form-control width" required min="0.1" step="0.01">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Тип конструкции:</label>
+                            <select class="form-select window-type" required>
+                                <option value="simple">Глухое</option>
+                                <option value="rotating">С поворотными скобами</option>
+                                <option value="zipper">На молниях</option>
+                            </select>
+                            <div class="form-text type-description"></div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input bottom-furniture">
+                            <label class="form-check-label">Добавить фурнитуру по низу</label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Рассчитать стоимость</button>
+
+                        <div class="results mt-4" style="display: none;">
+                            <h4>Результаты расчета:</h4>
+                            <div class="calculation-details">
+                                <p>Площадь: <span class="area"></span> м²</p>
+                                <p>Базовая стоимость: <span class="base-price"></span> руб.</p>
+                                <p class="additional-costs"></p>
+                                <h5>Итоговая стоимость: <span class="total-price"></span> руб.</h5>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mb-4">
+            <button id="addWindowBtn" class="btn btn-success">Добавить окно</button>
+        </div>
+
+        <div id="summaryTable" class="mt-4" style="display: none;">
+            <h3>Итоговая таблица</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Наименование</th>
+                        <th>Размеры</th>
+                        <th>Тип конструкции</th>
+                        <th>Комплектация</th>
+                        <th>Стоимость</th>
+                    </tr>
+                </thead>
+                <tbody id="summaryTableBody">
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" class="text-end"><strong>Общая стоимость:</strong></td>
+                        <td id="totalOrderSum"><strong>0</strong> руб.</td>
+                    </tr>
+                </tfoot>
+            </table>
+            <div class="summary-info mt-4">
+                <p class="text-muted">Расчет предварительный при условиях установки фурнитуры через 40 см.</p>
+                <p class="text-muted">Для окончательного расчета звоните нам, мы поможем выбрать оптимальный вариант для Вашей беседки.</p>
+                <h2 class="mt-4 display-4 text-center">МЯГКИЕ ОКНА ДВ</h2>
+                <h3 class="text-center">Мы создаем уют</h3>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <button id="savePdfBtn" class="btn btn-primary">Сохранить в PDF</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script>
+        document.getElementById('savePdfBtn').addEventListener('click', function() {
+            const { jsPDF } = window.jspdf;
+            
+            // Создаем PDF с кодировкой для кириллицы
+            const doc = new jsPDF('p', 'mm', 'a4', {
+                filters: ['ASCIIHexEncode']
+            });
+            
+            // Загружаем шрифт для кириллицы
+            doc.addFont('/static/DejaVuSans.ttf', 'DejaVuSans', 'normal');
+            doc.setFont('DejaVuSans');
+            
+            // Заголовок
+            doc.setFontSize(20);
+            doc.text('Расчет стоимости мягких окон', 105, 20, { align: 'center' });
+            
+            // Данные таблицы
+            const tableData = [];
+            document.querySelectorAll('#summaryTableBody tr').forEach(row => {
+                const rowData = [];
+                row.querySelectorAll('td').forEach(cell => {
+                    rowData.push(cell.textContent.trim());
+                });
+                tableData.push(rowData);
+            });
+            
+            // Создание таблицы
+            doc.autoTable({
+                startY: 30,
+                head: [['Наименование', 'Размеры', 'Тип конструкции', 'Комплектация', 'Стоимость']],
+                body: tableData,
+                theme: 'grid',
+                styles: {
+                    font: 'DejaVuSans',
+                    fontSize: 10
+                }
+            });
+            
+            // Итоговая сумма
+            const totalSum = document.getElementById('totalOrderSum').textContent;
+            doc.text(`Общая стоимость: ${totalSum}`, 15, doc.lastAutoTable.finalY + 10);
+            
+            // Контактная информация
+            doc.text('МЯГКИЕ ОКНА ДВ', 105, doc.lastAutoTable.finalY + 30, { align: 'center' });
+            doc.text('Мы создаем уют', 105, doc.lastAutoTable.finalY + 40, { align: 'center' });
+            
+            doc.save('расчет-мягкие-окна.pdf');
+        });
+    </script>
+    <script src="/static/js/calculator.js"></script>
+</body>
+</html>
